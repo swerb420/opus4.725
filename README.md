@@ -79,3 +79,32 @@ in one source will not stop the others.
 Minute level historical data is often restricted on free API tiers. When
 requesting long date ranges, especially with the CCXT or market modules,
 expect only partial results unless you upgrade the respective services.
+
+## Setup
+
+1. Install Python 3.10 or later. A Conda environment works well:
+
+```bash
+conda create -n opus4 python=3.10
+conda activate opus4
+pip install -r requirements.txt
+```
+
+2. Set the required API keys as environment variables before running:
+
+```
+FRED_API_KEY=your_fred_key
+DUNE_API_KEY=your_dune_key
+ALPHA_VANTAGE_KEY=your_alpha_key
+POLYGON_KEY=your_polygon_key
+GOOGLE_CLOUD_PROJECT=your_project_id
+TELEGRAM_BOT_TOKEN=token
+TELEGRAM_CHAT_ID=chat
+```
+
+3. Run modules individually or execute `python main_pipeline.py` to call
+every collector once.
+
+Note that free API tiers typically provide only limited historical depth.
+Fetching years of minute data may require paid plans or looping requests
+over small time windows.
