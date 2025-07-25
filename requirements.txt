@@ -6,3 +6,9 @@ ccxt
 python-telegram-bot
 solana
 solders
+numpy
+matplotlib
+seaborn
+apify-client
+textblob
+yfinance
