@@ -147,8 +147,9 @@ class HistoricalDataCollector:
         try:
             since = int(pd.Timestamp(start_date).timestamp() * 1000)
             end = int(pd.Timestamp(end_date).timestamp() * 1000)
-            
+
             all_candles = []
+            records_saved = 0
             
             while since < end:
                 candles = await exchange.fetch_ohlcv(
@@ -165,16 +166,18 @@ class HistoricalDataCollector:
                 
                 if len(all_candles) >= 10000:
                     self._store_ohlcv_data(exchange.id, symbol, timeframe, all_candles)
+                    records_saved += len(all_candles)
                     all_candles = []
                 
                 await asyncio.sleep(exchange.rateLimit / 1000)
             
             if all_candles:
                 self._store_ohlcv_data(exchange.id, symbol, timeframe, all_candles)
-            
+                records_saved += len(all_candles)
+
             self._update_progress(
                 symbol.split('/')[0], exchange.id, 'ohlcv',
-                start_date, end_date, len(all_candles)
+                start_date, end_date, records_saved
             )
             
         except Exception as e:
