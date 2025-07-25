@@ -85,6 +85,7 @@ class AlphaPolygonAnalyzer:
                         conn.execute(
                             "INSERT OR REPLACE INTO prices VALUES (?, ?, ?, ?)",
                             (sym, trade.get('t'), trade.get('p', 0), 'polygon')
+
                         )
                         conn.commit()
                 await asyncio.sleep(1)
