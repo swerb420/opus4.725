@@ -13,6 +13,9 @@ relies mostly on free API tiers.
 - **alpha_polygon_analyzer.py** – fetch basic data from Alpha Vantage and Polygon.io.
 - **bigquery_collector.py** – read Reddit posts from the public BigQuery dataset.
 - **ccxt_collector.py** – example using CCXT to pull crypto OHLCV data.
+- **database_optimizer.py** – advanced SQLite partitioning and optimization utilities.
+- **historical_data_collector.py** – gather long-term crypto data from multiple sources.
+- **enhanced_coin_manager.py** – manage coins with auto-discovery and Telegram controls.
 
 - **telegram_alerts.py** – minimal Telegram alert sender.
 - **main_pipeline.py** – orchestrates all modules for a single run.
