@@ -14,13 +14,27 @@ relies mostly on free API tiers.
 - **bigquery_collector.py** – read Reddit posts from the public BigQuery dataset.
 - **ccxt_collector.py** – example using CCXT to pull crypto OHLCV data.
 - **telegram_alerts.py** – minimal Telegram alert sender.
+- **main_pipeline.py** – orchestrates all modules for a single run.
 
 ## Usage
 
-Set the environment variable `FRED_API_KEY` with your FRED API key and run:
+Set any required API keys via environment variables. At minimum you should
+set `FRED_API_KEY` for the FRED collector. Optionally configure
+`DUNE_QUERY_ID`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, and others
+as needed.
+
+To run the individual modules you can invoke them directly:
 
 ```bash
 python fred_data_collector.py
 ```
 
-The script will download data for a set of predefined series (`GDP`, `CPIAUCSL`, `UNRATE`, `FEDFUNDS`, `DGS10`) and store them in `fred_data.db`.
+To run a single orchestrated pipeline that touches each module once use:
+
+```bash
+python main_pipeline.py
+```
+
+The pipeline uses very small data pulls so it should run with free API
+limits. All operations are wrapped in basic error handling so a failure
+in one source will not stop the others.
