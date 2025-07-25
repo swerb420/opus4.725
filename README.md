@@ -38,3 +38,32 @@ python main_pipeline.py
 The pipeline uses very small data pulls so it should run with free API
 limits. All operations are wrapped in basic error handling so a failure
 in one source will not stop the others.
+
+## Setup
+
+1. Install Python 3.10 or later. A Conda environment works well:
+
+```bash
+conda create -n opus4 python=3.10
+conda activate opus4
+pip install -r requirements.txt
+```
+
+2. Set the required API keys as environment variables before running:
+
+```
+FRED_API_KEY=your_fred_key
+DUNE_API_KEY=your_dune_key
+ALPHA_VANTAGE_KEY=your_alpha_key
+POLYGON_KEY=your_polygon_key
+GOOGLE_CLOUD_PROJECT=your_project_id
+TELEGRAM_BOT_TOKEN=token
+TELEGRAM_CHAT_ID=chat
+```
+
+3. Run modules individually or execute `python main_pipeline.py` to call
+every collector once.
+
+Note that free API tiers typically provide only limited historical depth.
+Fetching years of minute data may require paid plans or looping requests
+over small time windows.
