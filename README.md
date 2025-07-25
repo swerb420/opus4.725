@@ -16,6 +16,19 @@ relies mostly on free API tiers.
 - **telegram_alerts.py** – minimal Telegram alert sender.
 - **main_pipeline.py** – orchestrates all modules for a single run.
 
+## Installation
+
+Install the Python dependencies with either pip or conda:
+
+```bash
+# using pip
+pip install -r requirements.txt
+
+# using conda
+conda create -n opus-env python=3.10 --file requirements.txt
+conda activate opus-env
+```
+
 ## Usage
 
 Set any required API keys via environment variables. At minimum you should
