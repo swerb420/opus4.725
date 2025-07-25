@@ -2,7 +2,7 @@ aiohttp
 requests
 pandas
 google-cloud-bigquery
-python-telegram-bot
 ccxt
+python-telegram-bot
 solana
 solders

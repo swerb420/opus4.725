@@ -13,33 +13,51 @@ relies mostly on free API tiers.
 - **alpha_polygon_analyzer.py** – fetch basic data from Alpha Vantage and Polygon.io.
 - **bigquery_collector.py** – read Reddit posts from the public BigQuery dataset.
 - **ccxt_collector.py** – example using CCXT to pull crypto OHLCV data.
+
 - **telegram_alerts.py** – minimal Telegram alert sender.
 - **main_pipeline.py** – orchestrates all modules for a single run.
 
-## Installation
+## Setup
 
-Install the Python dependencies with either pip or conda:
+Create a Python environment (conda or `venv`) and install the
+dependencies listed in `requirements.txt`:
 
 ```bash
-# using pip
+conda create -n opus python=3.10
+conda activate opus
 pip install -r requirements.txt
-
-# using conda
-conda create -n opus-env python=3.10 --file requirements.txt
-conda activate opus-env
 ```
+
 
 ## Usage
 
-Set any required API keys via environment variables. At minimum you should
-set `FRED_API_KEY` for the FRED collector. Optionally configure
-`DUNE_QUERY_ID`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, and others
-as needed.
+Set the following environment variables to enable the various collectors:
+
+```bash
+export FRED_API_KEY=your_fred_key
+export DUNE_API_KEY=your_dune_key
+export DUNE_QUERY_ID=123456
+export ALPHA_VANTAGE_KEY=your_alpha_key
+export POLYGON_KEY=your_polygon_key
+export GOOGLE_CLOUD_PROJECT=your_gcp_project
+export TELEGRAM_BOT_TOKEN=your_bot_token
+export TELEGRAM_CHAT_ID=your_chat_id
+export QUICKNODE_RPC=https://api.mainnet-beta.solana.com
+export SOLANA_WALLET=YourWalletAddress
+```
+
+Unset values simply disable the related module.
 
 To run the individual modules you can invoke them directly:
 
 ```bash
 python fred_data_collector.py
+```
+
+On macOS the system Python may require the `python3` command:
+
+```bash
+python3 fred_data_collector.py
 ```
 
 To run a single orchestrated pipeline that touches each module once use:
@@ -48,9 +66,19 @@ To run a single orchestrated pipeline that touches each module once use:
 python main_pipeline.py
 ```
 
+On macOS:
+
+```bash
+python3 main_pipeline.py
+```
+
 The pipeline uses very small data pulls so it should run with free API
 limits. All operations are wrapped in basic error handling so a failure
 in one source will not stop the others.
+
+Minute level historical data is often restricted on free API tiers. When
+requesting long date ranges, especially with the CCXT or market modules,
+expect only partial results unless you upgrade the respective services.
 
 ## Setup
 
