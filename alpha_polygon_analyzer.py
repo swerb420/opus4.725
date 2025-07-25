@@ -79,10 +79,12 @@ class AlphaPolygonAnalyzer:
                         )
                         conn.commit()
                 if snap.get('ticker'):
+                    ts = snap['ticker'].get('lastTrade', {}).get('t')
+                    price = snap['ticker'].get('lastTrade', {}).get('p', 0)
                     with sqlite3.connect(self.db_path) as conn:
                         conn.execute(
                             "INSERT OR REPLACE INTO prices VALUES (?, ?, ?, ?)",
-                            (sym, snap['status'], snap['ticker'].get('lastTrade', {}).get('p', 0), 'polygon')
+                            (sym, ts, price, 'polygon')
                         )
                         conn.commit()
                 await asyncio.sleep(1)
