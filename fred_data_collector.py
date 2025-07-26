@@ -114,13 +114,16 @@ class FREDDataCollector:
         if series_ids is None:
             series_ids = list(self.SERIES.keys())
         async with aiohttp.ClientSession() as session:
-            for sid in series_ids:
-                logger.info(f"Fetching {sid}")
-                info = await self.fetch_series_info(session, sid)
-                self._store_series_info(sid, info)
-                observations = await self.fetch_observations(session, sid)
-                self._store_observations(sid, observations)
-                await asyncio.sleep(1)  # basic rate limiting
+            with sqlite3.connect(self.db_path) as conn:
+                self.conn = conn
+                for sid in series_ids:
+                    logger.info(f"Fetching {sid}")
+                    info = await self.fetch_series_info(session, sid)
+                    self._store_series_info(sid, info)
+                    observations = await self.fetch_observations(session, sid)
+                    self._store_observations(sid, observations)
+                    await asyncio.sleep(1)  # basic rate limiting
+                self.conn = None
         logger.info("Completed FRED data fetch")
 
 
