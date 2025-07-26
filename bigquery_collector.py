@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class BigQueryDataCollector:
-    def __init__(self, db_path: str = "bigquery_data.db", project_id: str = None):
+    def __init__(self, db_path: str = get_config("DB_PATH", "opus.db"), project_id: str = None):
         self.db_path = db_path
         self.project_id = project_id or get_config('GOOGLE_CLOUD_PROJECT')
         self.client = bigquery.Client(project=self.project_id)

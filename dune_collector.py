@@ -17,7 +17,7 @@ class DuneAnalyticsCollector:
 
     BASE_URL = "https://api.dune.com/api/v1"
 
-    def __init__(self, db_path: str = "dune_data.db"):
+    def __init__(self, db_path: str = get_config("DB_PATH", "opus.db")):
         self.api_key = get_config("DUNE_API_KEY", "")
         self.db_path = db_path
         self.init_db()
