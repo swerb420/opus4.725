@@ -1,6 +1,6 @@
 # Simplified CCXT data collector
 import asyncio
-import sqlite3
+import aiosqlite
 import logging
 from typing import List
 import ccxt.async_support as ccxt
@@ -12,11 +12,10 @@ class CCXTDataCollector:
     def __init__(self, db_path: str = get_config("DB_PATH", "opus.db")):
         self.db_path = db_path
         self.exchange = ccxt.binance({'enableRateLimit': True})
-        self.init_db()
 
-    def init_db(self):
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
+    async def init_db(self):
+        async with aiosqlite.connect(self.db_path) as conn:
+            await conn.execute(
                 """CREATE TABLE IF NOT EXISTS ohlcv (
                     symbol TEXT,
                     timestamp INTEGER,
@@ -28,17 +27,18 @@ class CCXTDataCollector:
                     PRIMARY KEY (symbol, timestamp)
                 )"""
             )
-            conn.commit()
+            await conn.commit()
 
     async def fetch_ohlcv(self, symbol: str):
+        await self.init_db()
         data = await self.exchange.fetch_ohlcv(symbol, '1h', limit=24)
-        with sqlite3.connect(self.db_path) as conn:
+        async with aiosqlite.connect(self.db_path) as conn:
             for candle in data:
-                conn.execute(
+                await conn.execute(
                     'INSERT OR REPLACE INTO ohlcv VALUES (?, ?, ?, ?, ?, ?, ?)',
                     (symbol, candle[0], candle[1], candle[2], candle[3], candle[4], candle[5])
                 )
-            conn.commit()
+            await conn.commit()
 
     async def close(self):
         await self.exchange.close()

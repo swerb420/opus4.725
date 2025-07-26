@@ -1,7 +1,7 @@
 import asyncio
 import datetime
 import logging
-import sqlite3
+import aiosqlite
 from typing import List, Dict, Optional
 import aiohttp
 
@@ -27,13 +27,11 @@ class FREDDataCollector:
     def __init__(self, db_path: str = get_config("DB_PATH", "opus.db")):
         self.api_key = get_config("FRED_API_KEY", "")
         self.db_path = db_path
-        self.conn: Optional[sqlite3.Connection] = None
-        self.init_db()
 
-    def init_db(self):
+    async def init_db(self):
         """Create tables if they do not exist."""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
+        async with aiosqlite.connect(self.db_path) as conn:
+            await conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS fred_series (
                     series_id TEXT PRIMARY KEY,
@@ -41,7 +39,7 @@ class FREDDataCollector:
                 )
                 """
             )
-            conn.execute(
+            await conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS fred_observations (
                     series_id TEXT,
@@ -51,7 +49,7 @@ class FREDDataCollector:
                 )
                 """
             )
-            conn.commit()
+            await conn.commit()
 
     async def fetch_series_info(self, session: aiohttp.ClientSession, series_id: str) -> Dict:
         params = {
@@ -79,17 +77,18 @@ class FREDDataCollector:
             data = await resp.json()
             return data.get("observations", [])
 
-    def _store_series_info(self, series_id: str, info: Dict):
-        if not info or not self.conn:
+    async def _store_series_info(self, series_id: str, info: Dict):
+        if not info:
             return
-        self.conn.execute(
-            "INSERT OR REPLACE INTO fred_series (series_id, title) VALUES (?, ?)",
-            (series_id, info.get("title")),
-        )
-        self.conn.commit()
+        async with aiosqlite.connect(self.db_path) as conn:
+            await conn.execute(
+                "INSERT OR REPLACE INTO fred_series (series_id, title) VALUES (?, ?)",
+                (series_id, info.get("title")),
+            )
+            await conn.commit()
 
-    def _store_observations(self, series_id: str, observations: List[Dict]):
-        if not observations or not self.conn:
+    async def _store_observations(self, series_id: str, observations: List[Dict]):
+        if not observations:
             return
         rows = []
         for obs in observations:
@@ -104,15 +103,17 @@ class FREDDataCollector:
             rows.append((series_id, date, val))
 
         if rows:
-            self.conn.executemany(
-                "INSERT OR REPLACE INTO fred_observations (series_id, date, value) VALUES (?, ?, ?)",
-                rows,
-            )
-            self.conn.commit()
+            async with aiosqlite.connect(self.db_path) as conn:
+                await conn.executemany(
+                    "INSERT OR REPLACE INTO fred_observations (series_id, date, value) VALUES (?, ?, ?)",
+                    rows,
+                )
+                await conn.commit()
 
     async def fetch_all_series_data(self, series_ids: Optional[List[str]] = None):
         if series_ids is None:
             series_ids = list(self.SERIES.keys())
+        await self.init_db()
         async with aiohttp.ClientSession() as session:
             with sqlite3.connect(self.db_path) as conn:
                 self.conn = conn
