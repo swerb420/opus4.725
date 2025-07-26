@@ -5,7 +5,7 @@ import logging
 from typing import List
 import ccxt.async_support as ccxt
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class CCXTDataCollector:
     def __init__(self, db_path: str = 'crypto_data.db'):
