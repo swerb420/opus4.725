@@ -41,7 +41,7 @@ class PolygonClient:
 
 
 class AlphaPolygonAnalyzer:
-    def __init__(self, db_path: str = "alpha_polygon.db"):
+    def __init__(self, db_path: str = get_config("DB_PATH", "opus.db")):
         self.av_key = get_config('ALPHA_VANTAGE_KEY', '')
         self.poly_key = get_config('POLYGON_KEY', '')
         self.db_path = db_path
