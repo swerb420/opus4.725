@@ -28,9 +28,12 @@ class YFinanceDataCollector:
         'options_activity': ['SPY', 'QQQ', 'IWM', 'TSLA', 'AAPL', 'NVDA', 'AMD', 'META']
     }
 
+    SP500_CACHE_FILE = 'sp500_symbols.json'
+
     def __init__(self, db_path: str):
         self.db_path = db_path
         self.executor = ThreadPoolExecutor(max_workers=10)
+        self.sp500_cache_file = Path(self.db_path).with_name(self.SP500_CACHE_FILE)
         self.init_db()
 
     def init_db(self):
@@ -404,8 +407,16 @@ class YFinanceDataCollector:
         return 0.0
 
     def _load_sp500_symbols(self, refresh_hours: int = 24) -> List[str]:
-        """Retrieve S&P 500 symbols using a cached JSON file."""
-        cache_file = Path(self.db_path).with_name('sp500_symbols.json')
+        """Return a list of S&P 500 symbols using a simple JSON cache.
+
+        Parameters
+        ----------
+        refresh_hours : int, optional
+            Hours before the cache expires. Defaults to ``24``.
+        The cache is stored in ``self.sp500_cache_file`` and contains the
+        fetched symbols along with a ``last_updated`` timestamp.
+        """
+        cache_file = self.sp500_cache_file
         if cache_file.exists():
             try:
                 data = json.loads(cache_file.read_text())
@@ -440,6 +451,7 @@ class YFinanceDataCollector:
         """Calculate market breadth indicators."""
         breadth = {}
         try:
+            # Use cached S&P 500 list for efficiency
             symbols = self._load_sp500_symbols()[:50]
             advances = 0
             declines = 0
