@@ -31,6 +31,12 @@ class BigQueryDataCollector:
                 )
                 """
             )
+            conn.execute(
+                """
+                CREATE VIRTUAL TABLE IF NOT EXISTS reddit_posts_fts
+                USING fts5(id UNINDEXED, title)
+                """
+            )
             conn.commit()
 
     def fetch_reddit_posts(self, subreddits: List[str], days_back: int = 7):
@@ -45,7 +51,25 @@ class BigQueryDataCollector:
         df = self.client.query(query).to_dataframe()
         with sqlite3.connect(self.db_path) as conn:
             df.to_sql('reddit_posts', conn, if_exists='append', index=False)
+            conn.executemany(
+                'INSERT OR REPLACE INTO reddit_posts_fts (id, title) VALUES (?, ?)',
+                df[['id', 'title']].itertuples(index=False, name=None)
+            )
+            conn.commit()
 
+    def search_recent_posts(self, term: str, days_back: int = 7) -> pd.DataFrame:
+        """Search recent Reddit posts mentioning a term."""
+        start = int((datetime.datetime.utcnow() - datetime.timedelta(days=days_back)).timestamp())
+        with sqlite3.connect(self.db_path) as conn:
+            query = '''
+                SELECT p.*
+                FROM reddit_posts_fts f
+                JOIN reddit_posts p ON f.id = p.id
+                WHERE reddit_posts_fts MATCH ?
+                AND p.created_utc >= ?
+                ORDER BY p.created_utc DESC
+            '''
+            return pd.read_sql_query(query, conn, params=(term, start))
 
 if __name__ == '__main__':
     collector = BigQueryDataCollector()

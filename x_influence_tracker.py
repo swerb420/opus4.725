@@ -127,6 +127,10 @@ class XInfluenceTracker:
                 )
             ''')
             conn.execute('''
+                CREATE VIRTUAL TABLE IF NOT EXISTS x_tweets_fts
+                USING fts5(tweet_id UNINDEXED, content)
+            ''')
+            conn.execute('''
                 CREATE TABLE IF NOT EXISTS x_market_impact (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     tweet_id TEXT,
@@ -301,6 +305,10 @@ class XInfluenceTracker:
                 tweet_data['sentiment_score'], tweet_data['mentioned_assets'],
                 tweet_data['is_market_moving'], tweet_data['url']
             ))
+            conn.execute(
+                'INSERT OR REPLACE INTO x_tweets_fts (tweet_id, content) VALUES (?, ?)',
+                (tweet_data['tweet_id'], tweet_data['content'])
+            )
             conn.commit()
 
     async def _analyze_market_impact(self, tweets: List[Dict]):
@@ -450,6 +458,19 @@ class XInfluenceTracker:
                 'trending_words': themes.to_frame('frequency'),
                 'asset_sentiment': asset_sentiment
             }
+
+    def search_recent_tweets(self, term: str, hours: int = 24) -> pd.DataFrame:
+        """Search recent tweets mentioning a term."""
+        with sqlite3.connect(self.db_path) as conn:
+            query = '''
+                SELECT t.*
+                FROM x_tweets_fts f
+                JOIN x_tweets t ON f.tweet_id = t.tweet_id
+                WHERE x_tweets_fts MATCH ?
+                AND t.timestamp > datetime('now', ?)
+                ORDER BY t.timestamp DESC
+            '''
+            return pd.read_sql_query(query, conn, params=(term, f'-{hours} hours'))
 
 
 async def setup_x_influence_tracker(db_path: str) -> XInfluenceTracker:
