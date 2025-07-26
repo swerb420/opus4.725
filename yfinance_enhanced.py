@@ -11,6 +11,7 @@ from typing import Dict, List, Optional, Tuple
 import json
 from concurrent.futures import ThreadPoolExecutor
 import requests
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -168,8 +169,24 @@ class YFinanceDataCollector:
             conn.execute('CREATE INDEX IF NOT EXISTS idx_minute_symbol ON yf_minute_data(symbol, timestamp DESC)')
             conn.execute('CREATE INDEX IF NOT EXISTS idx_sentiment_ts ON market_sentiment(timestamp DESC)')
 
-    def fetch_options_chain(self, symbol: str, include_greeks: bool = True) -> pd.DataFrame:
-        """Fetch complete options chain with Greeks."""
+    def fetch_options_chain(
+        self,
+        symbol: str,
+        include_greeks: bool = True,
+        max_expirations: int = 5,
+    ) -> pd.DataFrame:
+        """Fetch options chain data.
+
+        Parameters
+        ----------
+        symbol: str
+            Ticker symbol to query.
+        include_greeks: bool, optional
+            Included for API compatibility. Greeks are always returned by
+            ``yfinance``.
+        max_expirations: int, optional
+            Limit on the number of expiration dates to fetch. Defaults to 5.
+        """
         try:
             ticker = yf.Ticker(symbol)
             expirations = ticker.options
@@ -177,7 +194,7 @@ class YFinanceDataCollector:
                 return pd.DataFrame()
             all_options = []
             timestamp = datetime.now()
-            for exp_date in expirations[:10]:
+            for exp_date in expirations[:max_expirations]:
                 try:
                     opt_chain = ticker.option_chain(exp_date)
                     calls = opt_chain.calls
@@ -386,12 +403,44 @@ class YFinanceDataCollector:
                 return result[0] / result[1]
         return 0.0
 
+    def _load_sp500_symbols(self, refresh_hours: int = 24) -> List[str]:
+        """Retrieve S&P 500 symbols using a cached JSON file."""
+        cache_file = Path(self.db_path).with_name('sp500_symbols.json')
+        if cache_file.exists():
+            try:
+                data = json.loads(cache_file.read_text())
+                last_update = datetime.fromisoformat(data.get('last_updated'))
+                if datetime.now() - last_update < timedelta(hours=refresh_hours):
+                    symbols = data.get('symbols', [])
+                    if isinstance(symbols, list) and symbols:
+                        return symbols
+            except Exception as e:
+                logging.error(f"Failed to load symbol cache: {e}")
+
+        try:
+            sp500 = pd.read_html(
+                'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
+            )[0]
+            symbols = sp500['Symbol'].tolist()
+            cache_file.write_text(
+                json.dumps({'last_updated': datetime.now().isoformat(), 'symbols': symbols})
+            )
+            return symbols
+        except Exception as e:
+            logging.error(f"Error fetching S&P 500 symbols: {e}")
+            if cache_file.exists():
+                try:
+                    data = json.loads(cache_file.read_text())
+                    return data.get('symbols', [])
+                except Exception:
+                    pass
+        return []
+
     def _calculate_market_breadth(self) -> Dict:
         """Calculate market breadth indicators."""
         breadth = {}
         try:
-            sp500 = pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')[0]
-            symbols = sp500['Symbol'].tolist()[:50]
+            symbols = self._load_sp500_symbols()[:50]
             advances = 0
             declines = 0
             up_volume = 0
@@ -507,7 +556,7 @@ class YFinanceDataCollector:
         logger.info("Starting YFinance comprehensive update...")
         self.fetch_market_sentiment()
         for symbol in self.MARKET_INDICATORS['options_activity']:
-            self.fetch_options_chain(symbol)
+            self.fetch_options_chain(symbol, max_expirations=5)
             await asyncio.sleep(1)
         unusual = self.detect_unusual_options()
         if not unusual.empty:

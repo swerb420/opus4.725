@@ -27,6 +27,7 @@ class FREDDataCollector:
     def __init__(self, db_path: str = "fred_data.db"):
         self.api_key = get_config("FRED_API_KEY", "")
         self.db_path = db_path
+        self.conn: Optional[sqlite3.Connection] = None
         self.init_db()
 
     def init_db(self):
@@ -79,33 +80,35 @@ class FREDDataCollector:
             return data.get("observations", [])
 
     def _store_series_info(self, series_id: str, info: Dict):
-        if not info:
+        if not info or not self.conn:
             return
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                "INSERT OR REPLACE INTO fred_series (series_id, title) VALUES (?, ?)",
-                (series_id, info.get("title")),
-            )
-            conn.commit()
+        self.conn.execute(
+            "INSERT OR REPLACE INTO fred_series (series_id, title) VALUES (?, ?)",
+            (series_id, info.get("title")),
+        )
+        self.conn.commit()
 
     def _store_observations(self, series_id: str, observations: List[Dict]):
-        if not observations:
+        if not observations or not self.conn:
             return
-        with sqlite3.connect(self.db_path) as conn:
-            for obs in observations:
-                value = obs.get("value")
-                date = obs.get("date")
-                if not value or value == ".":
-                    continue
-                try:
-                    val = float(value)
-                except ValueError:
-                    continue
-                conn.execute(
-                    "INSERT OR REPLACE INTO fred_observations (series_id, date, value) VALUES (?, ?, ?)",
-                    (series_id, date, val),
-                )
-            conn.commit()
+        rows = []
+        for obs in observations:
+            value = obs.get("value")
+            date = obs.get("date")
+            if not value or value == ".":
+                continue
+            try:
+                val = float(value)
+            except ValueError:
+                continue
+            rows.append((series_id, date, val))
+
+        if rows:
+            self.conn.executemany(
+                "INSERT OR REPLACE INTO fred_observations (series_id, date, value) VALUES (?, ?, ?)",
+                rows,
+            )
+            self.conn.commit()
 
     async def fetch_all_series_data(self, series_ids: Optional[List[str]] = None):
         if series_ids is None:

@@ -65,30 +65,33 @@ class AlphaPolygonAnalyzer:
     async def fetch_and_store(self, symbols: List[str]):
         av_client = AlphaVantageClient(self.av_key)
         poly_client = PolygonClient(self.poly_key)
-        async with aiohttp.ClientSession() as session:
-            for sym in symbols:
-                av_data = await av_client.fetch_daily(session, sym)
-                snap = await poly_client.fetch_snapshot(session, sym)
-                if 'Time Series (Daily)' in av_data:
-                    latest_date, daily = next(iter(av_data['Time Series (Daily)'].items()))
-                    close = float(daily['4. close'])
-                    with sqlite3.connect(self.db_path) as conn:
-                        conn.execute(
-                            "INSERT OR REPLACE INTO prices VALUES (?, ?, ?, ?)",
-                            (sym, latest_date, close, 'alpha_vantage')
-                        )
-                        conn.commit()
-                if snap.get('ticker'):
-                    # store Polygon last trade timestamp and price
-                    trade = snap['ticker'].get('lastTrade', {})
-                    with sqlite3.connect(self.db_path) as conn:
-                        conn.execute(
-                            "INSERT OR REPLACE INTO prices VALUES (?, ?, ?, ?)",
-                            (sym, trade.get('t'), trade.get('p', 0), 'polygon')
 
-                        )
-                        conn.commit()
-                await asyncio.sleep(1)
+        async with aiohttp.ClientSession() as session:
+            # keep a single db connection for the entire loop
+            with sqlite3.connect(self.db_path) as conn:
+                rows = []  # accumulate rows before bulk insert
+                for sym in symbols:
+                    av_data = await av_client.fetch_daily(session, sym)
+                    snap = await poly_client.fetch_snapshot(session, sym)
+
+                    if 'Time Series (Daily)' in av_data:
+                        latest_date, daily = next(iter(av_data['Time Series (Daily)'].items()))
+                        close = float(daily['4. close'])
+                        rows.append((sym, latest_date, close, 'alpha_vantage'))
+
+                    if snap.get('ticker'):
+                        # store Polygon last trade timestamp and price
+                        trade = snap['ticker'].get('lastTrade', {})
+                        rows.append((sym, trade.get('t'), trade.get('p', 0), 'polygon'))
+
+                    await asyncio.sleep(1)
+
+                if rows:
+                    conn.executemany(
+                        "INSERT OR REPLACE INTO prices VALUES (?, ?, ?, ?)",
+                        rows,
+                    )
+                    conn.commit()
 
 
 async def main():

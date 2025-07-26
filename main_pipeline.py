@@ -67,12 +67,22 @@ async def main():
     solana_tracker = SolanaWalletTracker('solana_wallets.db')
     telegram = TelegramAlertSystem()
 
-    await run_fred(fred)
-    await run_dune(dune)
-    await run_alpha_polygon(alpha_poly)
-    await run_bigquery(bigquery)
-    await run_ccxt(ccxt_col)
-    await run_solana(solana_tracker)
+    semaphore = asyncio.Semaphore(3)
+
+    async def limited(coro):
+        async with semaphore:
+            await coro
+
+    tasks = [
+        limited(run_fred(fred)),
+        limited(run_dune(dune)),
+        limited(run_alpha_polygon(alpha_poly)),
+        limited(run_bigquery(bigquery)),
+        limited(run_ccxt(ccxt_col)),
+        limited(run_solana(solana_tracker)),
+    ]
+
+    await asyncio.gather(*tasks)
 
     await telegram.send_alert(Alert(symbol='SYSTEM', message='Pipeline run completed', severity='info'))
 
