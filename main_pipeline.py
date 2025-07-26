@@ -9,6 +9,7 @@ from fred_data_collector import FREDDataCollector
 from solana_wallet_tracker import SolanaWalletTracker
 from telegram_alerts import TelegramAlertSystem, Alert
 from config import get_config
+from database_optimizer import setup_database_optimization
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +67,10 @@ async def main():
     ccxt_col = CCXTDataCollector()
     solana_tracker = SolanaWalletTracker('solana_wallets.db')
     telegram = TelegramAlertSystem()
+
+    optimizer = setup_database_optimization('crypto_data.db')
+    optimizer.enable_wal_mode()
+    optimizer.vacuum_and_analyze()
 
     semaphore = asyncio.Semaphore(3)
 
