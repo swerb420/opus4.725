@@ -11,6 +11,7 @@ from typing import Dict, List, Optional, Tuple
 import json
 from concurrent.futures import ThreadPoolExecutor
 import requests
+from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -386,12 +387,44 @@ class YFinanceDataCollector:
                 return result[0] / result[1]
         return 0.0
 
+    def _load_sp500_symbols(self, refresh_hours: int = 24) -> List[str]:
+        """Retrieve S&P 500 symbols using a cached JSON file."""
+        cache_file = Path(self.db_path).with_name('sp500_symbols.json')
+        if cache_file.exists():
+            try:
+                data = json.loads(cache_file.read_text())
+                last_update = datetime.fromisoformat(data.get('last_updated'))
+                if datetime.now() - last_update < timedelta(hours=refresh_hours):
+                    symbols = data.get('symbols', [])
+                    if isinstance(symbols, list) and symbols:
+                        return symbols
+            except Exception as e:
+                logging.error(f"Failed to load symbol cache: {e}")
+
+        try:
+            sp500 = pd.read_html(
+                'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
+            )[0]
+            symbols = sp500['Symbol'].tolist()
+            cache_file.write_text(
+                json.dumps({'last_updated': datetime.now().isoformat(), 'symbols': symbols})
+            )
+            return symbols
+        except Exception as e:
+            logging.error(f"Error fetching S&P 500 symbols: {e}")
+            if cache_file.exists():
+                try:
+                    data = json.loads(cache_file.read_text())
+                    return data.get('symbols', [])
+                except Exception:
+                    pass
+        return []
+
     def _calculate_market_breadth(self) -> Dict:
         """Calculate market breadth indicators."""
         breadth = {}
         try:
-            sp500 = pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')[0]
-            symbols = sp500['Symbol'].tolist()[:50]
+            symbols = self._load_sp500_symbols()[:50]
             advances = 0
             declines = 0
             up_volume = 0
