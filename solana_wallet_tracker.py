@@ -3,7 +3,7 @@
 import asyncio
 import datetime
 import logging
-import sqlite3
+import aiosqlite
 import json
 from typing import Dict, List, Optional, Any
 
@@ -47,11 +47,10 @@ class SolanaWalletTracker:
         self.db_path = db_path
         self.rpc_url = get_config("QUICKNODE_RPC", "https://api.mainnet-beta.solana.com")
         self.client = AsyncClient(self.rpc_url) if AsyncClient else None
-        self.init_db()
 
-    def init_db(self):
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
+    async def init_db(self):
+        async with aiosqlite.connect(self.db_path) as conn:
+            await conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS solana_wallets (
                     address TEXT PRIMARY KEY,
@@ -61,7 +60,7 @@ class SolanaWalletTracker:
                 )
                 """
             )
-            conn.execute(
+            await conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS solana_transactions (
                     signature TEXT PRIMARY KEY,
@@ -77,7 +76,7 @@ class SolanaWalletTracker:
                 )
                 """
             )
-            conn.commit()
+            await conn.commit()
 
     async def _fetch_wallet_transactions(self, wallet_address: str, limit: int = 100) -> List[WalletTransaction]:
         if not self.client:
@@ -109,10 +108,10 @@ class SolanaWalletTracker:
             logger.error(f"Error fetching transactions: {e}")
         return txs
 
-    def _store_transactions(self, txs: List[WalletTransaction]):
-        with sqlite3.connect(self.db_path) as conn:
+    async def _store_transactions(self, txs: List[WalletTransaction]):
+        async with aiosqlite.connect(self.db_path) as conn:
             for tx in txs:
-                conn.execute(
+                await conn.execute(
                     """
                     INSERT OR IGNORE INTO solana_transactions
                     (signature, timestamp, from_address, to_address, amount, token, fee, program, slot, success)
@@ -131,11 +130,12 @@ class SolanaWalletTracker:
                         tx.success,
                     )
                 )
-            conn.commit()
+            await conn.commit()
 
     async def track_wallet(self, wallet_address: str):
+        await self.init_db()
         txs = await self._fetch_wallet_transactions(wallet_address)
-        self._store_transactions(txs)
+        await self._store_transactions(txs)
         logger.info(f"Stored {len(txs)} transactions for {wallet_address}")
 
 

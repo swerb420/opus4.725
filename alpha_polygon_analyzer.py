@@ -1,7 +1,7 @@
 # Simplified AlphaVantage and Polygon.io integration
 import asyncio
 import logging
-import sqlite3
+import aiosqlite
 from typing import List
 import aiohttp
 import json
@@ -45,11 +45,10 @@ class AlphaPolygonAnalyzer:
         self.av_key = get_config('ALPHA_VANTAGE_KEY', '')
         self.poly_key = get_config('POLYGON_KEY', '')
         self.db_path = db_path
-        self.init_db()
 
-    def init_db(self):
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
+    async def init_db(self):
+        async with aiosqlite.connect(self.db_path) as conn:
+            await conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS prices (
                     symbol TEXT,
@@ -60,15 +59,15 @@ class AlphaPolygonAnalyzer:
                 )
                 """
             )
-            conn.commit()
+            await conn.commit()
 
     async def fetch_and_store(self, symbols: List[str]):
         av_client = AlphaVantageClient(self.av_key)
         poly_client = PolygonClient(self.poly_key)
 
+        await self.init_db()
         async with aiohttp.ClientSession() as session:
-            # keep a single db connection for the entire loop
-            with sqlite3.connect(self.db_path) as conn:
+            async with aiosqlite.connect(self.db_path) as conn:
                 rows = []  # accumulate rows before bulk insert
                 for sym in symbols:
                     av_data = await av_client.fetch_daily(session, sym)
@@ -87,11 +86,11 @@ class AlphaPolygonAnalyzer:
                     await asyncio.sleep(1)
 
                 if rows:
-                    conn.executemany(
+                    await conn.executemany(
                         "INSERT OR REPLACE INTO prices VALUES (?, ?, ?, ?)",
                         rows,
                     )
-                    conn.commit()
+                    await conn.commit()
 
 
 async def main():
