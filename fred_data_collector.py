@@ -24,7 +24,7 @@ class FREDDataCollector:
         "DGS10": "10-Year Treasury Rate",
     }
 
-    def __init__(self, db_path: str = "fred_data.db"):
+    def __init__(self, db_path: str = get_config("DB_PATH", "opus.db")):
         self.api_key = get_config("FRED_API_KEY", "")
         self.db_path = db_path
         self.conn: Optional[sqlite3.Connection] = None

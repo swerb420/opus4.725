@@ -4,11 +4,12 @@ import sqlite3
 import logging
 from typing import List
 import ccxt.async_support as ccxt
+from config import get_config
 
 logger = logging.getLogger(__name__)
 
 class CCXTDataCollector:
-    def __init__(self, db_path: str = 'crypto_data.db'):
+    def __init__(self, db_path: str = get_config("DB_PATH", "opus.db")):
         self.db_path = db_path
         self.exchange = ccxt.binance({'enableRateLimit': True})
         self.init_db()

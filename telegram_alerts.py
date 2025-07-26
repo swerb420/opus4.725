@@ -18,7 +18,7 @@ class Alert:
     severity: str = 'info'
 
 class TelegramAlertSystem:
-    def __init__(self, db_path: str = 'alerts.db'):
+    def __init__(self, db_path: str = get_config("DB_PATH", "opus.db")):
         self.token = get_config('TELEGRAM_BOT_TOKEN')
         self.chat_id = get_config('TELEGRAM_CHAT_ID')
         self.bot = Bot(self.token)
