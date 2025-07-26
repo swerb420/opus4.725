@@ -13,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 import requests
 from pathlib import Path
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
 class YFinanceDataCollector:
@@ -215,13 +215,13 @@ class YFinanceDataCollector:
                     options['in_the_money'] = options['inTheMoney']
                     all_options.append(options)
                 except Exception as e:
-                    logging.error(f"Error fetching options for {symbol} exp {exp_date}: {e}")
+                    logger.error(f"Error fetching options for {symbol} exp {exp_date}: {e}")
             if all_options:
                 df = pd.concat(all_options, ignore_index=True)
                 self._store_options_chain(df)
                 return df
         except Exception as e:
-            logging.error(f"Error fetching options chain for {symbol}: {e}")
+            logger.error(f"Error fetching options chain for {symbol}: {e}")
         return pd.DataFrame()
 
     def detect_unusual_options(self, symbol: str = None, min_volume: int = 1000, min_ratio: float = 2.0) -> pd.DataFrame:
@@ -268,7 +268,7 @@ class YFinanceDataCollector:
                 self._calculate_microstructure(symbol, df)
             return df
         except Exception as e:
-            logging.error(f"Error fetching minute data for {symbol}: {e}")
+            logger.error(f"Error fetching minute data for {symbol}: {e}")
             return pd.DataFrame()
 
     def fetch_market_sentiment(self) -> Dict:
@@ -285,7 +285,7 @@ class YFinanceDataCollector:
             sentiment['indicators']['fear_greed_index'] = fear_greed
             self._store_market_sentiment(sentiment['indicators'])
         except Exception as e:
-            logging.error(f"Error calculating market sentiment: {e}")
+            logger.error(f"Error calculating market sentiment: {e}")
         return sentiment
 
     def fetch_stock_fundamentals(self, symbols: List[str]) -> pd.DataFrame:
@@ -317,7 +317,7 @@ class YFinanceDataCollector:
                 }
                 all_fundamentals.append(fundamentals)
             except Exception as e:
-                logging.error(f"Error fetching fundamentals for {symbol}: {e}")
+                logger.error(f"Error fetching fundamentals for {symbol}: {e}")
         if all_fundamentals:
             df = pd.DataFrame(all_fundamentals)
             self._store_fundamentals(df)
@@ -465,7 +465,7 @@ class YFinanceDataCollector:
             breadth['down_volume'] = down_volume
             breadth['market_breadth'] = up_volume / (up_volume + down_volume) if (up_volume + down_volume) > 0 else 0.5
         except Exception as e:
-            logging.error(f"Error calculating market breadth: {e}")
+            logger.error(f"Error calculating market breadth: {e}")
         return breadth
 
     def _calculate_fear_greed_index(self) -> float:
@@ -487,7 +487,7 @@ class YFinanceDataCollector:
                 gold_score = max(0, min(100, 50 - gold_return * 10))
                 components.append(gold_score)
         except Exception as e:
-            logging.error(f"Error calculating fear/greed: {e}")
+            logger.error(f"Error calculating fear/greed: {e}")
         return sum(components) / len(components) if components else 50.0
 
     def _store_options_chain(self, df: pd.DataFrame):
@@ -553,19 +553,19 @@ class YFinanceDataCollector:
 
     async def run_comprehensive_update(self):
         """Run comprehensive market data update."""
-        logging.info("Starting YFinance comprehensive update...")
+        logger.info("Starting YFinance comprehensive update...")
         self.fetch_market_sentiment()
         for symbol in self.MARKET_INDICATORS['options_activity']:
             self.fetch_options_chain(symbol, max_expirations=5)
             await asyncio.sleep(1)
         unusual = self.detect_unusual_options()
         if not unusual.empty:
-            logging.info(f"Found {len(unusual)} unusual options activities")
+            logger.info(f"Found {len(unusual)} unusual options activities")
         for symbol in self.MARKET_INDICATORS['meme_stocks'][:5]:
             self.fetch_minute_data(symbol, days=1)
             await asyncio.sleep(1)
         self.fetch_stock_fundamentals(self.MARKET_INDICATORS['crypto_stocks'])
-        logging.info("YFinance update completed")
+        logger.info("YFinance update completed")
 
 
 async def setup_yfinance_collector(db_path: str) -> YFinanceDataCollector:

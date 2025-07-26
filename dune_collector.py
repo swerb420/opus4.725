@@ -9,7 +9,7 @@ from typing import Dict, List, Any
 
 from config import get_config
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
 class DuneAnalyticsCollector:
@@ -45,7 +45,7 @@ class DuneAnalyticsCollector:
             resp.raise_for_status()
             return resp.json().get("execution_id")
         except Exception as e:  # pragma: no cover - network issues
-            logging.error(f"execute_query failed: {e}")
+            logger.error(f"execute_query failed: {e}")
             return ""
 
     def get_results(self, execution_id: str) -> Dict[str, Any]:
@@ -77,7 +77,7 @@ class DuneAnalyticsCollector:
         results = self.get_results(exec_id)
         if results:
             self.store_results(query_id, exec_id, results)
-            logging.info(f"Stored results for {query_id}")
+            logger.info(f"Stored results for {query_id}")
 
 
 async def main(query_id: str):

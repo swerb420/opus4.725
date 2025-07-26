@@ -10,53 +10,53 @@ from solana_wallet_tracker import SolanaWalletTracker
 from telegram_alerts import TelegramAlertSystem, Alert
 from config import get_config
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 async def run_fred(fred: FREDDataCollector):
     try:
         await fred.fetch_all_series_data()
     except Exception as e:
-        logging.error(f"FRED fetch failed: {e}")
+        logger.error(f"FRED fetch failed: {e}")
 
 async def run_dune(dune: DuneAnalyticsCollector):
     query_id = get_config('DUNE_QUERY_ID')
     if not query_id:
-        logging.warning('DUNE_QUERY_ID not set')
+        logger.warning('DUNE_QUERY_ID not set')
         return
     try:
         dune.run_query(query_id)
     except Exception as e:
-        logging.error(f"Dune query failed: {e}")
+        logger.error(f"Dune query failed: {e}")
 
 async def run_alpha_polygon(analyzer: AlphaPolygonAnalyzer):
     try:
         await analyzer.fetch_and_store(['AAPL', 'MSFT'])
     except Exception as e:
-        logging.error(f"AlphaPolygon fetch failed: {e}")
+        logger.error(f"AlphaPolygon fetch failed: {e}")
 
 async def run_bigquery(bq: BigQueryDataCollector):
     try:
         bq.fetch_reddit_posts(['bitcoin', 'ethereum'])
     except Exception as e:
-        logging.error(f"BigQuery fetch failed: {e}")
+        logger.error(f"BigQuery fetch failed: {e}")
 
 async def run_ccxt(ccxt_col: CCXTDataCollector):
     try:
         await ccxt_col.fetch_ohlcv('BTC/USDT')
     except Exception as e:
-        logging.error(f"CCXT fetch failed: {e}")
+        logger.error(f"CCXT fetch failed: {e}")
     finally:
         await ccxt_col.close()
 
 async def run_solana(tracker: SolanaWalletTracker):
     wallet = get_config('SOLANA_WALLET')
     if not wallet:
-        logging.warning('SOLANA_WALLET not set')
+        logger.warning('SOLANA_WALLET not set')
         return
     try:
         await tracker.track_wallet(wallet)
     except Exception as e:
-        logging.error(f"Solana tracking failed: {e}")
+        logger.error(f"Solana tracking failed: {e}")
 
 async def main():
     fred = FREDDataCollector()
@@ -87,4 +87,5 @@ async def main():
     await telegram.send_alert(Alert(symbol='SYSTEM', message='Pipeline run completed', severity='info'))
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     asyncio.run(main())

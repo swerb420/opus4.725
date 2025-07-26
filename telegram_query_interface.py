@@ -15,7 +15,7 @@ import re
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import CommandHandler, MessageHandler, Filters, CallbackQueryHandler, ConversationHandler
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
 class TelegramQueryInterface:
@@ -576,7 +576,7 @@ class TelegramQueryInterface:
                 conn.commit()
             return True
         except Exception as e:
-            logging.error(f"Error adding wallet: {e}")
+            logger.error(f"Error adding wallet: {e}")
             return False
 
     def _detect_chain(self, address: str) -> str:

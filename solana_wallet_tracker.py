@@ -19,7 +19,7 @@ except Exception:  # pragma: no cover - optional deps
 
 from config import get_config
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
 class WalletTransaction:
@@ -81,7 +81,7 @@ class SolanaWalletTracker:
 
     async def _fetch_wallet_transactions(self, wallet_address: str, limit: int = 100) -> List[WalletTransaction]:
         if not self.client:
-            logging.warning("Solana client not available")
+            logger.warning("Solana client not available")
             return []
 
         txs = []
@@ -106,7 +106,7 @@ class SolanaWalletTracker:
                         success=tx_resp.meta.err is None
                     ))
         except Exception as e:  # pragma: no cover - network issues
-            logging.error(f"Error fetching transactions: {e}")
+            logger.error(f"Error fetching transactions: {e}")
         return txs
 
     def _store_transactions(self, txs: List[WalletTransaction]):
@@ -136,7 +136,7 @@ class SolanaWalletTracker:
     async def track_wallet(self, wallet_address: str):
         txs = await self._fetch_wallet_transactions(wallet_address)
         self._store_transactions(txs)
-        logging.info(f"Stored {len(txs)} transactions for {wallet_address}")
+        logger.info(f"Stored {len(txs)} transactions for {wallet_address}")
 
 
 async def main(wallet: str, db: str = "solana_wallets.db"):

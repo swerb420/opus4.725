@@ -14,7 +14,7 @@ from textblob import TextBlob
 
 from config import get_config
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
 class XInfluenceTracker:
@@ -187,7 +187,7 @@ class XInfluenceTracker:
                 tweets.append(item)
             return tweets
         except Exception as e:
-            logging.error(f"Error fetching tweets for {username}: {e}")
+            logger.error(f"Error fetching tweets for {username}: {e}")
             return []
 
     async def track_all_influencers(self):
@@ -195,7 +195,7 @@ class XInfluenceTracker:
         all_tweets = []
         for category, usernames in self.INFLUENCERS.items():
             for username in usernames:
-                logging.info(f"Fetching tweets from {username} ({category})")
+                logger.info(f"Fetching tweets from {username} ({category})")
                 tweets = await self.fetch_influencer_tweets(username, max_tweets=50)
                 if tweets:
                     processed_tweets = self._process_tweets(tweets, username, category)
@@ -229,7 +229,7 @@ class XInfluenceTracker:
                 processed.append(tweet_data)
                 self._store_tweet(tweet_data)
             except Exception as e:
-                logging.error(f"Error processing tweet: {e}")
+                logger.error(f"Error processing tweet: {e}")
         return processed
 
     def _analyze_sentiment(self, text: str) -> float:
@@ -251,7 +251,7 @@ class XInfluenceTracker:
                     sentiment -= 0.2
             return max(-1, min(1, sentiment))
         except Exception as e:
-            logging.error(f"Error analyzing sentiment: {e}")
+            logger.error(f"Error analyzing sentiment: {e}")
             return 0.0
 
     def _extract_assets(self, text: str) -> List[Dict]:

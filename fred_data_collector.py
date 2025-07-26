@@ -7,7 +7,7 @@ import aiohttp
 
 from config import get_config
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
 class FREDDataCollector:
@@ -113,22 +113,15 @@ class FREDDataCollector:
     async def fetch_all_series_data(self, series_ids: Optional[List[str]] = None):
         if series_ids is None:
             series_ids = list(self.SERIES.keys())
-
-        self.conn = sqlite3.connect(self.db_path)
-        try:
-            async with aiohttp.ClientSession() as session:
-                for sid in series_ids:
-                    logging.info(f"Fetching {sid}")
-                    info = await self.fetch_series_info(session, sid)
-                    self._store_series_info(sid, info)
-                    observations = await self.fetch_observations(session, sid)
-                    self._store_observations(sid, observations)
-                    await asyncio.sleep(1)  # basic rate limiting
-            logging.info("Completed FRED data fetch")
-        finally:
-            if self.conn:
-                self.conn.close()
-                self.conn = None
+        async with aiohttp.ClientSession() as session:
+            for sid in series_ids:
+                logger.info(f"Fetching {sid}")
+                info = await self.fetch_series_info(session, sid)
+                self._store_series_info(sid, info)
+                observations = await self.fetch_observations(session, sid)
+                self._store_observations(sid, observations)
+                await asyncio.sleep(1)  # basic rate limiting
+        logger.info("Completed FRED data fetch")
 
 
 async def main(db_path: str = "fred_data.db"):
