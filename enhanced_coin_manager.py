@@ -505,8 +505,8 @@ async def setup_enhanced_coin_tracking(db_path: str, ccxt_collector) -> CoinMana
     """Set up enhanced coin tracking with auto-discovery."""
     manager = CoinManager(db_path)
     
-    if ccxt_collector and ccxt_collector.exchanges:
-        new_coins = await manager.discover_new_coins(ccxt_collector.exchanges)
+    if ccxt_collector and getattr(ccxt_collector, "exchange", None):
+        new_coins = await manager.discover_new_coins({"default": ccxt_collector.exchange})
         manager.auto_add_trending(min_volume=5_000_000)
     
     return manager
