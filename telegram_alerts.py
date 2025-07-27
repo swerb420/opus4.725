@@ -22,8 +22,16 @@ class TelegramAlertSystem:
         self.token = get_config('TELEGRAM_BOT_TOKEN')
         self.chat_id = get_config('TELEGRAM_CHAT_ID')
         self.bot = None
-        if not self.token or not self.chat_id:
-            logger.warning("Telegram credentials not provided; alerts disabled")
+        missing = []
+        if not self.token:
+            missing.append("TELEGRAM_BOT_TOKEN")
+        if not self.chat_id:
+            missing.append("TELEGRAM_CHAT_ID")
+
+        if missing:
+            logger.warning(
+                f"Missing {', '.join(missing)}; telegram alerts disabled"
+            )
         else:
             try:
                 self.bot = Bot(self.token)
