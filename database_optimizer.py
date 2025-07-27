@@ -168,61 +168,74 @@ class DatabaseOptimizer:
         """Update aggregated tables with latest data."""
         with sqlite3.connect(self.db_path) as conn:
             partitions = conn.execute(
-                "SELECT partition_name, year FROM price_partitions ORDER BY year"
+                "SELECT partition_name FROM price_partitions ORDER BY year"
             ).fetchall()
 
-            for partition_name, year in partitions:
+            for (partition_name,) in partitions:
                 if symbol:
-                    where_clause = f"WHERE symbol = '{symbol}'"
+                    df = pd.read_sql_query(
+                        f"SELECT symbol, timestamp, open, high, low, close, volume FROM {partition_name} WHERE symbol = ?",
+                        conn,
+                        params=(symbol,),
+                        parse_dates=["timestamp"],
+                    )
                 else:
-                    where_clause = ""
+                    df = pd.read_sql_query(
+                        f"SELECT symbol, timestamp, open, high, low, close, volume FROM {partition_name}",
+                        conn,
+                        parse_dates=["timestamp"],
+                    )
 
-                conn.execute(
-                    f"""
-                    INSERT OR REPLACE INTO monthly_aggregates
-                    SELECT
-                        symbol,
-                        strftime('%Y-%m', timestamp) as year_month,
-                        (
-                            SELECT open FROM {partition_name} p2
-                            WHERE p2.symbol = p1.symbol
-                              AND strftime('%Y-%m', p2.timestamp) = strftime('%Y-%m', p1.timestamp)
-                            ORDER BY p2.timestamp ASC LIMIT 1
-                        ) as open,
-                        MAX(high) as high,
-                        MIN(low) as low,
-                        (
-                            SELECT close FROM {partition_name} p2
-                            WHERE p2.symbol = p1.symbol
-                              AND strftime('%Y-%m', p2.timestamp) = strftime('%Y-%m', p1.timestamp)
-                            ORDER BY p2.timestamp DESC LIMIT 1
-                        ) as close,
-                        AVG(close) as avg_price,
-                        SUM(volume) as total_volume,
-                        AVG(volume) as avg_volume,
-                        STDDEV(close) as volatility,
-                        ((
-                            SELECT close FROM {partition_name} p2
-                            WHERE p2.symbol = p1.symbol
-                              AND strftime('%Y-%m', p2.timestamp) = strftime('%Y-%m', p1.timestamp)
-                            ORDER BY p2.timestamp DESC LIMIT 1
-                        ) - (
-                            SELECT open FROM {partition_name} p2
-                            WHERE p2.symbol = p1.symbol
-                              AND strftime('%Y-%m', p2.timestamp) = strftime('%Y-%m', p1.timestamp)
-                            ORDER BY p2.timestamp ASC LIMIT 1
-                        )) /
-                        (
-                            SELECT open FROM {partition_name} p2
-                            WHERE p2.symbol = p1.symbol
-                              AND strftime('%Y-%m', p2.timestamp) = strftime('%Y-%m', p1.timestamp)
-                            ORDER BY p2.timestamp ASC LIMIT 1
-                        ) * 100 as return_pct,
-                        COUNT(DISTINCT DATE(timestamp)) as trading_days
-                    FROM {partition_name} p1
-                    {where_clause}
-                    GROUP BY symbol, strftime('%Y-%m', timestamp)
+                if df.empty:
+                    continue
+
+                df["date"] = df["timestamp"].dt.date
+                df["year_month"] = df["timestamp"].dt.strftime("%Y-%m")
+                df.sort_values("timestamp", inplace=True)
+
+                grouped = df.groupby(["symbol", "year_month"])
+                agg_df = grouped.agg(
+                    open=("open", "first"),
+                    high=("high", "max"),
+                    low=("low", "min"),
+                    close=("close", "last"),
+                    avg_price=("close", "mean"),
+                    total_volume=("volume", "sum"),
+                    avg_volume=("volume", "mean"),
+                    volatility=("close", "std"),
+                    trading_days=("date", pd.Series.nunique),
+                ).reset_index()
+
+                agg_df["volatility"] = agg_df["volatility"].fillna(0.0)
+                agg_df["return_pct"] = (
+                    (agg_df["close"] - agg_df["open"]) / agg_df["open"] * 100
+                )
+
+                conn.executemany(
                     """
+                    INSERT OR REPLACE INTO monthly_aggregates
+                    (symbol, year_month, open, high, low, close,
+                     avg_price, total_volume, avg_volume, volatility,
+                     return_pct, trading_days)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    [
+                        (
+                            row.symbol,
+                            row.year_month,
+                            row.open,
+                            row.high,
+                            row.low,
+                            row.close,
+                            row.avg_price,
+                            row.total_volume,
+                            row.avg_volume,
+                            row.volatility,
+                            row.return_pct,
+                            int(row.trading_days),
+                        )
+                        for row in agg_df.itertuples(index=False)
+                    ],
                 )
 
             conn.commit()
