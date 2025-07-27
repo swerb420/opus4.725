@@ -25,6 +25,10 @@ relies mostly on free API tiers.
 Create a Python environment (conda or `venv`) and install the
 dependencies listed in `requirements.txt`:
 
+> **Note**: The Telegram examples require `python-telegram-bot` version
+> `13.x`. This is pinned in `requirements.txt` to ensure compatibility
+> with the existing code.
+
 ```bash
 conda create -n opus python=3.10
 conda activate opus
@@ -93,6 +97,10 @@ conda create -n opus4 python=3.10
 conda activate opus4
 pip install -r requirements.txt
 ```
+
+The Telegram utilities depend on `python-telegram-bot` 13.x. Newer
+versions introduce a breaking API change, so the dependency is pinned in
+`requirements.txt`.
 
 2. Set the required API keys as environment variables before running:
 
