@@ -87,8 +87,17 @@ class XInfluenceTracker:
 
     def __init__(self, db_path: str):
         self.db_path = db_path
-        self.client = ApifyClient(get_config("APIFY_TOKEN"))
-        self.actor_id = get_config("ACTOR_ID", "kaitoeasyapi/twitter-x-data-tweet-scraper-pay-per-result-cheapest")
+        token = get_config("APIFY_TOKEN")
+        self.actor_id = get_config(
+            "ACTOR_ID",
+            "kaitoeasyapi/twitter-x-data-tweet-scraper-pay-per-result-cheapest",
+        )
+        if not token:
+            logger.warning(
+                "APIFY_TOKEN not set. Apify operations will be skipped.")
+            self.client = None
+        else:
+            self.client = ApifyClient(token)
         self.init_db()
 
     def init_db(self):
@@ -178,6 +187,9 @@ class XInfluenceTracker:
 
     async def fetch_influencer_tweets(self, username: str, max_tweets: int = 100) -> List[Dict]:
         """Fetch recent tweets from an influencer."""
+        if not self.client:
+            logger.warning("Apify client not configured; skipping fetch for %s", username)
+            return []
         try:
             run_input = {
                 "searchTerms": [f"from:{username}"],
@@ -196,6 +208,9 @@ class XInfluenceTracker:
 
     async def track_all_influencers(self):
         """Track tweets from all configured influencers."""
+        if not self.client:
+            logger.warning("Apify client not configured; skipping influencer tracking")
+            return []
         all_tweets = []
         for category, usernames in self.INFLUENCERS.items():
             for username in usernames:
