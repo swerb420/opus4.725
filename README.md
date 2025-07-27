@@ -45,6 +45,7 @@ export POLYGON_KEY=your_polygon_key
 export GOOGLE_CLOUD_PROJECT=your_gcp_project
 export TELEGRAM_BOT_TOKEN=your_bot_token
 export TELEGRAM_CHAT_ID=your_chat_id
+export APIFY_TOKEN=your_apify_token
 export QUICKNODE_RPC=https://api.mainnet-beta.solana.com
 export SOLANA_WALLET=YourWalletAddress
 ```
@@ -103,6 +104,7 @@ POLYGON_KEY=your_polygon_key
 GOOGLE_CLOUD_PROJECT=your_project_id
 TELEGRAM_BOT_TOKEN=token
 TELEGRAM_CHAT_ID=chat
+APIFY_TOKEN=your_apify_token
 ```
 
 3. Run modules individually or execute `python main_pipeline.py` to call
