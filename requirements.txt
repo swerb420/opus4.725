@@ -3,7 +3,8 @@ requests
 pandas
 google-cloud-bigquery
 ccxt
-python-telegram-bot
+python-telegram-bot~=13.0
+urllib3<2
 solana
 solders
 numpy
